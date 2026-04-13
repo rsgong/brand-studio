@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { uploadReferenceImage, deleteReferenceImage } from '@/lib/storage'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,20 +12,54 @@ interface Props {
   onCancel: () => void
 }
 
+const DRAFT_KEY = 'fc-shot-type-draft'
+
+interface Draft {
+  name: string
+  description: string
+  mediaType: 'image' | 'video'
+  systemPrompt: string
+  defaultAspect: string
+  defaultVariants: number
+  referenceImages: (string | null)[]
+  tempId: string
+}
+
+function loadDraft(): Draft | null {
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY)
+    return saved ? JSON.parse(saved) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(draft: Draft) {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY)
+}
+
 export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
   const { user } = useAuth()
   const isNew = !shotType
 
-  const [name, setName] = useState(shotType?.name ?? '')
-  const [description, setDescription] = useState(shotType?.description ?? '')
-  const [mediaType, setMediaType] = useState<'image' | 'video'>(shotType?.media_type ?? 'image')
-  const [systemPrompt, setSystemPrompt] = useState(shotType?.system_prompt ?? '')
-  const [defaultAspect, setDefaultAspect] = useState(shotType?.default_aspect_ratio ?? '16:9')
-  const [defaultVariants, setDefaultVariants] = useState(shotType?.default_variants ?? 3)
+  // Load draft for new shot types
+  const existingDraft = isNew ? loadDraft() : null
+
+  const [name, setName] = useState(existingDraft?.name ?? shotType?.name ?? '')
+  const [description, setDescription] = useState(existingDraft?.description ?? shotType?.description ?? '')
+  const [mediaType, setMediaType] = useState<'image' | 'video'>(existingDraft?.mediaType ?? shotType?.media_type ?? 'image')
+  const [systemPrompt, setSystemPrompt] = useState(existingDraft?.systemPrompt ?? shotType?.system_prompt ?? '')
+  const [defaultAspect, setDefaultAspect] = useState(existingDraft?.defaultAspect ?? shotType?.default_aspect_ratio ?? '16:9')
+  const [defaultVariants, setDefaultVariants] = useState(existingDraft?.defaultVariants ?? shotType?.default_variants ?? 3)
   const [saving, setSaving] = useState(false)
 
   // Reference images state: array of 4 slots (URL string or null)
   const [referenceImages, setReferenceImages] = useState<(string | null)[]>(() => {
+    if (existingDraft?.referenceImages) return existingDraft.referenceImages
     const urls = shotType?.reference_image_urls ?? []
     return [urls[0] ?? null, urls[1] ?? null, urls[2] ?? null, urls[3] ?? null]
   })
@@ -41,7 +75,62 @@ export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
   ]
 
   // For new shot types, we need a temporary ID for storage paths
-  const [tempId] = useState(() => shotType?.id ?? crypto.randomUUID())
+  const [tempId] = useState(() => existingDraft?.tempId ?? shotType?.id ?? crypto.randomUUID())
+
+  // Auto-save draft for new shot types
+  useEffect(() => {
+    if (!isNew) return
+    const draft: Draft = {
+      name,
+      description,
+      mediaType,
+      systemPrompt,
+      defaultAspect,
+      defaultVariants,
+      referenceImages,
+      tempId,
+    }
+    saveDraft(draft)
+  }, [isNew, name, description, mediaType, systemPrompt, defaultAspect, defaultVariants, referenceImages, tempId])
+
+  // Track which image slot is active for paste
+  const [activeSlot, setActiveSlot] = useState<number | null>(null)
+
+  // Handle paste from clipboard
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    // Find an image in the clipboard
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (!file) continue
+
+        // Determine which slot to use: active slot, or first empty slot
+        let targetSlot = activeSlot
+        if (targetSlot === null || referenceImages[targetSlot] !== null) {
+          // Find first empty slot
+          const emptyIndex = referenceImages.findIndex(img => img === null)
+          if (emptyIndex !== -1) {
+            targetSlot = emptyIndex
+          }
+        }
+
+        if (targetSlot !== null && !uploading[targetSlot]) {
+          handleFileSelect(targetSlot, file)
+        }
+        break
+      }
+    }
+  }, [activeSlot, referenceImages, uploading])
+
+  // Listen for paste events when component is mounted
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [handlePaste])
 
   async function handleFileSelect(index: number, file: File) {
     if (!file.type.startsWith('image/')) {
@@ -121,7 +210,13 @@ export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
     }
 
     setSaving(false)
+    if (isNew) clearDraft()
     onSave()
+  }
+
+  function handleCancel() {
+    if (isNew) clearDraft()
+    onCancel()
   }
 
   const isUploading = uploading.some(Boolean)
@@ -224,11 +319,18 @@ export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
                 }}
               />
               <div
-                onClick={() => !uploading[i] && !referenceImages[i] && fileInputRefs[i].current?.click()}
-                className={`aspect-square border-2 border-dashed rounded-lg flex items-center justify-center transition-colors ${
+                onClick={() => {
+                  setActiveSlot(i)
+                  if (!uploading[i] && !referenceImages[i]) {
+                    fileInputRefs[i].current?.click()
+                  }
+                }}
+                className={`aspect-square border-2 rounded-lg flex items-center justify-center transition-colors ${
                   referenceImages[i]
-                    ? 'border-transparent'
-                    : 'border-gray-300 hover:border-gray-400 cursor-pointer'
+                    ? activeSlot === i ? 'border-brand-500' : 'border-transparent'
+                    : activeSlot === i
+                      ? 'border-brand-500 bg-brand-50 cursor-pointer'
+                      : 'border-dashed border-gray-300 hover:border-gray-400 cursor-pointer'
                 }`}
               >
                 {uploading[i] ? (
@@ -242,7 +344,9 @@ export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
                 ) : (
                   <div className="text-center">
                     <Upload size={20} className="mx-auto text-gray-300" />
-                    <span className="text-xs text-gray-400 mt-1 block">Image {i + 1}</span>
+                    <span className="text-xs text-gray-400 mt-1 block">
+                      {activeSlot === i ? 'Paste or click' : `Image ${i + 1}`}
+                    </span>
                   </div>
                 )}
               </div>
@@ -274,7 +378,7 @@ export function ShotTypeEditor({ shotType, onSave, onCancel }: Props) {
 
       <div className="flex items-center justify-end gap-3 pt-2">
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <X size={14} /> Cancel

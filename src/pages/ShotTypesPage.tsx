@@ -4,11 +4,20 @@ import type { ShotTypeRow } from '@/types'
 import { ShotTypeEditor } from '@/components/ShotTypeEditor'
 import { Plus, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 
+const DRAFT_KEY = 'fc-shot-type-draft'
+
 export function ShotTypesPage() {
   const [shotTypes, setShotTypes] = useState<ShotTypeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  // Auto-open editor if there's a saved draft
+  const [creating, setCreating] = useState(() => {
+    try {
+      return localStorage.getItem(DRAFT_KEY) !== null
+    } catch {
+      return false
+    }
+  })
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   async function loadShotTypes() {
