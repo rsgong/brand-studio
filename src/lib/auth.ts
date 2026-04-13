@@ -1,27 +1,8 @@
 import { supabase } from './supabase'
 
-export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
-  })
-  if (error) throw error
-}
-
-export async function signInWithEmail(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({
+export async function signInWithMagicLink(email: string) {
+  const { error } = await supabase.auth.signInWithOtp({
     email,
-    password,
-  })
-  if (error) throw error
-}
-
-export async function signUpWithEmail(email: string, password: string) {
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
     options: {
       emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
