@@ -31,7 +31,7 @@ export function GeneratePage() {
   const [aspectRatio, setAspectRatio] = useState('16:9')
   const [userImage, setUserImage] = useState<File | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   // Video-specific state
   const [duration, setDuration] = useState(8)
@@ -138,6 +138,7 @@ export function GeneratePage() {
   async function handleGenerate() {
     if (!shotType || !user || !prompt.trim()) return
     setGenerating(true)
+    setGenerationError(null)
 
     try {
       if (shotType.media_type === 'video') {
@@ -234,6 +235,7 @@ export function GeneratePage() {
       }
     } catch (err) {
       console.error('Generation failed:', err)
+      setGenerationError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
       setGenerating(false)
     }
@@ -430,6 +432,13 @@ export function GeneratePage() {
                 <img src={lastFramePreview} alt="Last frame" className="mt-2 w-full rounded-lg" />
               )}
             </>
+          )}
+
+          {generationError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-600">{generationError}</p>
+            </div>
           )}
 
           <button
