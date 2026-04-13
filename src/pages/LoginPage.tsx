@@ -36,7 +36,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-sm w-full bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-semibold mb-2 text-center">Fresh Context Brand Studio</h1>
+        <h1 className="text-2xl font-semibold mb-2 text-center">Fresh Context</h1>
         <p className="text-gray-500 text-sm mb-6 text-center">
           Enter your @{ALLOWED_DOMAIN} email to sign in.
         </p>

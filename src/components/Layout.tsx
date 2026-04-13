@@ -20,7 +20,7 @@ export function Layout({ children }: PropsWithChildren) {
       {/* Top nav */}
       <header className="border-b border-gray-200 bg-white px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <h1 className="text-lg font-semibold tracking-tight">Fresh Context Brand Studio</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Fresh Context</h1>
           <nav className="flex items-center gap-1">
             {navItems.map(({ to, label, icon: Icon }) => (
               <NavLink

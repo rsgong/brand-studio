@@ -19,7 +19,7 @@ export function UsersPage() {
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-1">Users</h2>
-      <p className="text-gray-500 text-sm mb-8">Manage who has access to Brand Studio.</p>
+      <p className="text-gray-500 text-sm mb-8">Manage who has access to Fresh Context.</p>
 
       <div className="border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
