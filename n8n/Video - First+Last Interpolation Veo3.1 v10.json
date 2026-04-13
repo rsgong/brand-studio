@@ -235,17 +235,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/functions/v1/video-generation-callback",
+        "url": "={{$env.CALLBACK_URL}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Content-Type",
               "value": "application/json"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
             }
           ]
         },
@@ -264,17 +260,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.SUPABASE_URL}}/functions/v1/video-generation-callback",
+        "url": "={{$env.CALLBACK_URL}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Content-Type",
               "value": "application/json"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.SUPABASE_ANON_KEY}}"
             }
           ]
         },
