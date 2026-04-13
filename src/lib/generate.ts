@@ -1,5 +1,6 @@
 /**
- * Generation API — calls n8n webhook endpoints for image and video creation.
+ * Generation API — calls Supabase Edge Functions which proxy to n8n.
+ * This avoids CORS issues since Edge Functions handle the cross-origin request.
  *
  * Image workflow: synchronous — returns base64 images directly.
  * Video workflow: async — returns 202 with generation_id, then polls or uses callback.
@@ -8,10 +9,9 @@
 import { supabase } from './supabase'
 import type { ShotTypeRow } from '@/types'
 
-const N8N_URL = import.meta.env.VITE_N8N_WEBHOOK_URL
-const PASSPHRASE = import.meta.env.VITE_N8N_PASSPHRASE
-const IMAGE_WEBHOOK_PATH = import.meta.env.VITE_N8N_IMAGE_WEBHOOK_PATH
-const VIDEO_WEBHOOK_PATH = import.meta.env.VITE_N8N_VIDEO_WEBHOOK_PATH
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const IMAGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-image`
+const VIDEO_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generate-video`
 
 // ── Image Generation (synchronous via n8n) ──────────────────────────────
 
@@ -43,8 +43,8 @@ export async function generateImage(params: GenerateImageParams): Promise<ImageR
   }
 
   // Build the payload matching the n8n webhook schema
+  // Note: passphrase is added by the Edge Function, not sent from frontend
   const body: Record<string, unknown> = {
-    passphrase: PASSPHRASE,
     system_prompt: shotType.system_prompt,
     prompt,
     aspect: aspectRatio,
@@ -62,7 +62,7 @@ export async function generateImage(params: GenerateImageParams): Promise<ImageR
     body.user_image_url = userImageUrl
   }
 
-  const response = await fetch(`${N8N_URL}/${IMAGE_WEBHOOK_PATH}`, {
+  const response = await fetch(IMAGE_FUNCTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -101,8 +101,8 @@ export async function generateVideo(params: GenerateVideoParams): Promise<VideoA
   // Use provided generationId or create a new one
   const genId = generationId ?? crypto.randomUUID()
 
+  // Note: passphrase is added by the Edge Function, not sent from frontend
   const body: Record<string, unknown> = {
-    passphrase: PASSPHRASE,
     generation_id: genId,
     user_id: userId,
     prompt,
@@ -123,7 +123,7 @@ export async function generateVideo(params: GenerateVideoParams): Promise<VideoA
     body.last_frame_mime = 'image/jpeg'
   }
 
-  const response = await fetch(`${N8N_URL}/${VIDEO_WEBHOOK_PATH}`, {
+  const response = await fetch(VIDEO_FUNCTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

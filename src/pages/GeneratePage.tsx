@@ -31,6 +31,7 @@ export function GeneratePage() {
   const [aspectRatio, setAspectRatio] = useState('16:9')
   const [userImage, setUserImage] = useState<File | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Video-specific state
   const [duration, setDuration] = useState(8)
